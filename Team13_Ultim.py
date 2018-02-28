@@ -13,38 +13,121 @@ import math
 BP = brickpi3.BrickPi3() # Create an instance of the BrickPi3 class. BP will be the BrickPi3 object.
 
 ultrasonic_sensor_port = 2
+RIGHT_MOTOR = BP.PORT_A
+LEFT_MOTOR = BP.PORT_D
 
-#grovepi.ultrasonicRead(ultrasonic_sensor_port
+################DRIVING#######################
 
+FORWARD_DRIVE_SPEED = -10 #cm per second
+TURN_CMPS = -5 #cm per second
+STOP_DISTANCE = 15 #cm
 
+###########PHYSICAL DIMENTIONS##############
 
-#obs
+WHEEL_DIAMETER = 6 #cm
+DISTANCE_BETWEEN_TIRES = 13.5 #cm
+TURN_SPEED = float((TURN_CMPS*180)/((WHEEL_DIAMETER/2)*3.14))
+
+def resetMotorEncoders():
+     #reset motor encoders
+     BP.offset_motor_encoder(BP.PORT_A, BP.get_motor_encoder(BP.PORT_A))
+     BP.offset_motor_encoder(BP.PORT_B, BP.get_motor_encoder(BP.PORT_B))
+     BP.offset_motor_encoder(BP.PORT_C, BP.get_motor_encoder(BP.PORT_C))
+     BP.offset_motor_encoder(BP.PORT_D, BP.get_motor_encoder(BP.PORT_D))
+
+def printEncoders(): #used for debugging
+     try:
+          print("Encoder B: %6d C: %6d" % (BP.get_motor_encoder(BP.PORT_B), BP.get_motor_encoder(BP.PORT_C)))
+     except IOError as error:
+          print(error)  
+
+def driveSpeed(cmps = None): #drives straight at given speed in cm/s
+    if cmps == None:
+        cmps = FORWARD_DRIVE_SPEED
+    dps = (cmps*180)/((WHEEL_DIAMETER/2)*3.14)
+    BP.set_motor_dps(RIGHT_MOTOR+LEFT_MOTOR, dps)
+    
+def driveDistance(target_distance, cmps = None): #drives a given distance (cm) at speed (cm/s)
+     if cmps == None:
+          cmps = FORWARD_DRIVE_SPEED
+     dps = (cmps*180)/((WHEEL_DIAMETER/2)*3.14)
+     print("Traveling", target_distance, "cm")
+     BP.set_motor_dps(RIGHT_MOTOR+LEFT_MOTOR, dps)
+     distance_traveled = 0
+     encoder_start = BP.get_motor_encoder(RIGHT_MOTOR)
+     while(distance_traveled < target_distance):
+          encoder_dif = BP.get_motor_encoder(RIGHT_MOTOR) - encoder_start
+          distance_traveled = abs(3.14*WHEEL_DIAMETER*(float(encoder_dif)/360))
+          logAll()
+          cargoBrake()
+     BP.set_motor_dps(RIGHT_MOTOR+LEFT_MOTOR, 0)
+     print("Traveled", distance_traveled, "cm")
+
+def turnLeft(degrees):
+    
+    encoder_start = BP.get_motor_encoder(RIGHT_MOTOR)
+    encoder_dif = BP.get_motor_encoder(RIGHT_MOTOR) - encoder_start
+
+    target_arc_length = (DISTANCE_BETWEEN_TIRES/2)*(degrees*3.14)/180
+    arc_length_traveled = abs(3.14*WHEEL_DIAMETER*(encoder_dif/360))
+    
+    print("Target arc length:", target_arc_length)
+    
+    while(arc_length_traveled < target_arc_length):
+        BP.set_motor_dps(RIGHT_MOTOR, TURN_SPEED)
+        BP.set_motor_dps(LEFT_MOTOR, -1*TURN_SPEED)
+        
+        encoder_dif = BP.get_motor_encoder(RIGHT_MOTOR) - encoder_start
+        arc_length_traveled = abs(3.14*WHEEL_DIAMETER*(encoder_dif/360))
+
+    print("Turn finished.")
+    print("Arc length traveled:", arc_length_traveled)
+    BP.set_motor_power(LEFT_MOTOR + RIGHT_MOTOR, 0)
+    
+def turnRight(degrees):
+    
+    encoder_start = BP.get_motor_encoder(LEFT_MOTOR)
+    encoder_dif = BP.get_motor_encoder(LEFT_MOTOR) - encoder_start
+
+    target_arc_length = (DISTANCE_BETWEEN_TIRES/2)*(degrees*3.14)/180
+    arc_length_traveled = abs(3.14*WHEEL_DIAMETER*(encoder_dif/360))
+    
+    print("Target arc length:", target_arc_length)
+    
+    while(arc_length_traveled < target_arc_length):
+        BP.set_motor_dps(LEFT_MOTOR, TURN_SPEED)
+        BP.set_motor_dps(RIGHT_MOTOR, -1*TURN_SPEED)
+        
+        encoder_dif = BP.get_motor_encoder(LEFT_MOTOR) - encoder_start
+        arc_length_traveled = abs(3.14*WHEEL_DIAMETER*(encoder_dif/360))
+
+    print("Turn finished.")
+    print("Arc length traveled:", arc_length_traveled)
+    BP.set_motor_power(LEFT_MOTOR + RIGHT_MOTOR, 0)
 
 def pathFind():
     while True:
-        state = 0
         ultra = grovepi.ultrasonicRead(ultrasonic_sensor_port)
-        if (ultra > 15):
+        if (ultra > STOP_DISTANCE):
+            driveSpeed()
             state = 0
-            runA(50)
         else:
-            if (state == 0):
+            stop()
+            time.sleep(1)
+            if (state == 0 and ultra <= STOP_DISTANCE):
+                print("Checking Right")
+                turnRight(90)
                 state = 1
-                print(state)
-                turnR90()
-            if (state == 1):
+            elif (state == 1 and ultra <= STOP_DISTANCE):
+                print("Checking Left from Right")
+                turnLeft(180)
                 state = 2
-                print(state)
-                turnL90()
-                turnL90()
-            if (state == 2):
-                state = 3
-                print(state)
-                print("turn around")
-        time.sleep(.25)
-
-
-#with ultrasonic
+            elif (state == 2 and ultra <= STOP_DISTANCE):
+                print("Turning around")
+                turnRight(90)
+                driveDistance(-10)
+                turnRight(180)
+                state = 0
 
 def wallStop(dps):
     runA(dps)
@@ -54,7 +137,6 @@ def wallStop(dps):
         print(ultra)
         time.sleep(.25)
     stop()
-
 
 #run functions
 
@@ -68,63 +150,6 @@ def run(letter, dps):
     elif (letter == "D"):
         BP.set_motor_dps(BP.PORT_D, -1 * dps)
 
-def runA(dps):
-    BP.set_motor_dps(BP.PORT_A, -1 * dps)
-    BP.set_motor_dps(BP.PORT_B, dps)
-    BP.set_motor_dps(BP.PORT_C, dps)
-    BP.set_motor_dps(BP.PORT_D, -1 * dps)
-
-
-#turn functions
-
-def turnR(dps):
-    stop()
-    BP.set_motor_dps(BP.PORT_A, dps)
-    BP.set_motor_dps(BP.PORT_B, -1 * dps)
-    BP.set_motor_dps(BP.PORT_C, dps)
-    BP.set_motor_dps(BP.PORT_D, -1 * dps)
-
-def turnL(dps):
-    stop()
-    BP.set_motor_dps(BP.PORT_A, -1 * dps)
-    BP.set_motor_dps(BP.PORT_B, dps)
-    BP.set_motor_dps(BP.PORT_C, -1 *dps)
-    BP.set_motor_dps(BP.PORT_D, dps)
-
-def turn(dpsL, dpsR):
-    stop()
-    BP.set_motor_dps(BP.PORT_A, -1 * dpsR)
-    BP.set_motor_dps(BP.PORT_B, dpsR)
-    BP.set_motor_dps(BP.PORT_C, dpsL)
-    BP.set_motor_dps(BP.PORT_D, -1 * dpsL)
-
-
-#deg turns
-
-def turnR90():
-    dps = 50
-    turnR(dps)
-    time.sleep(215.0/dps)
-    stop()
-
-def turnL90():
-    dps = 50
-    turnL(dps)
-    time.sleep(215.0/dps)
-    stop()
-
-def turnRdeg(deg):
-    dps = 50
-    turnR(dps)
-    time.sleep(210.0*(deg/90.0)/dps)
-    stop()
-
-def turndeg(deg):
-    dps = 50
-    turnR(dps)
-    time.sleep(210.0*(deg/90.0)/dps)
-    stop()
-
 #stop functions
         
 def stop():
@@ -133,7 +158,6 @@ def stop():
     BP.set_motor_dps(BP.PORT_C, 0)
     BP.set_motor_dps(BP.PORT_D, 0)
 
-def s():
-    stop()
-
+stop()
+resetMotorEncoders()
 
