@@ -2,12 +2,11 @@ import sys
 
 CLEAR_CHAR = 'X'
 WALL_CHAR = ' '
-global currentX 
+
 currentX = 0
-global currentY 
 currentY = 0
-global currentDir
 currentDir = "S"
+scanDir = "S"
 
 mapMatrix = [[0]]
 
@@ -89,27 +88,106 @@ def moveForward():
     checkEdges()
     
 def isClear():
-    return input("Clear? ") # TEMPORARY!!!! NEEDS TO BE CODED
+    return int(input("Clear? ")) # TEMPORARY!!!! NEEDS TO BE CODED
 
-def rotateScanner(position):
-    return # TEMPORARY!!!! NEEDS TO BE CODED
+def rotateScanner():
+    global scanDir
+    
+    curDirNum = dirToNum(currentDir)
+    scanDirNum = dirToNum(scanDir)
+    
+    scanDir = numToDir(curDirNum + scanDirNum + 1)
+    # TEMPORARY!!!! NEEDS TO BE CODED
+    
+def turnRight():
+    global currentDir
+    global scanDir
+    
+    currentDir = numToDir(dirToNum(currentDir) + 1)
+    scanDir = currentDir
+    
+def turnLeft():
+    global currentDir
+    global scanDir
+    
+    currentDir = numToDir(dirToNum(currentDir) - 1)
+    scanDir = currentDir
     
 def scanSurroundings():
+    global scanDir
+    
     checkEdges()
     scanDir = currentDir
-    for i in range(0, 4):
+    print("Current position: ", currentX, currentY)
+    
+    for i in ["F", "R", "B", "L"]:
+        print("Scanning: ", scanDir)
         if isClear():
             if scanDir == "N":
                 mapMatrix[currentY - 1][currentX] = 0
                 
             elif scanDir == "E":
-                mapMatrix[currentY][currentX - 1] = 0
+                mapMatrix[currentY][currentX + 1] = 0
                 
             elif scanDir == "S":
                 mapMatrix[currentY + 1][currentX] = 0
                 
             elif scanDir == "W":
-                mapMatrix[currentY][currentX + 1] = 0
-        rotateScanner(i)
-    dispMap()
+                mapMatrix[currentY][currentX - 1] = 0
+                
+        else:
+            if scanDir == "N":
+                mapMatrix[currentY - 1][currentX] = 1
+                
+            elif scanDir == "E":
+                mapMatrix[currentY][currentX + 1] = 1
+                
+            elif scanDir == "S":
+                mapMatrix[currentY + 1][currentX] = 1
+                
+            elif scanDir == "W":
+                mapMatrix[currentY][currentX - 1] = 1      
+                
+        rotateScanner()
+        
     
+def dirToNum(direction):
+    
+    if direction == "N" or direction == "F":
+        return 0
+    elif direction == "E" or direction == "R":
+        return 1
+    elif direction == "S" or direction == "B":
+        return 2
+    elif direction == "W" or direction == "L":
+        return 3
+
+def numToDirScanner(number):
+    while number < 0:
+        number += 4
+        
+    number %= 4 
+    
+    if number == 0:
+        return "F"
+    elif number == 1:
+        return "R"
+    elif number == 2:
+        return "B"
+    elif number == 3:
+        return "L"
+    
+def numToDir(number):
+    while number < 0:
+        number += 4
+        
+    number %= 4
+    
+    if number == 0:
+        return "N"
+    elif number == 1:
+        return "E"
+    elif number == 2:
+        return "S"
+    elif number == 3:
+        return "W"
