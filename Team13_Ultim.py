@@ -22,7 +22,7 @@ FORWARD_DRIVE_SPEED = -10 #cm per second
 TURN_CMPS = -5 #cm per second
 STOP_DISTANCE = 15 #cm
 
-###########PHYSICAL DIMENTIONS##############
+###########PHYSICAL DIMENTIONS################
 
 WHEEL_DIAMETER = 6 #cm
 DISTANCE_BETWEEN_TIRES = 13.5 #cm
