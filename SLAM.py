@@ -1,5 +1,5 @@
 import sys
-#import driveLibrary
+import driveLibrary
 
 CLEAR_CHAR = 'X'
 WALL_CHAR = ' '
@@ -22,11 +22,102 @@ scanPos = "F"
 
 pathMatrix = [[OPEN_KEY]]
 
+def advance():
+    moveForward()
+    scanSurroundings()
+
+def goToFourPoints(x1,y1,x2,y2,x3,y3,x4,y4):
+    global currentX
+    global currentY
+    global pathMatrix
+    
+    xlist = [x1,x2,x3,x4]
+    ylist = [y1,y2,y3,y4]
+
+    xmax = x1
+    for x in xlist:
+        if x > xmax:
+            xmax = x
+
+    ymax = y1
+    for y in ylist:
+        if y > ymax:
+            ymax = y
+
+    emptyMap(xmax, ymax)
+
+    currentX = 1
+    currentY = 1
+
+    for i in range(currentY, y1):
+        moveForward()
+
+    
+    turnTowards("E")
+
+    for i in range(currentX, x1):
+        moveForward()
+
+    #POINT 2
+    if y1 - y2 > 0:
+        turnTowards("N")
+    else:
+        turnTowards("S")
+    for i in range(currentY, currentY + abs(y1 - y2)):
+        moveForward()
+
+    if x1 - x2 > 0:
+        turnTowards("W")
+    else:
+        turnTowards("E")
+
+    for i in range(currentX, currentX + abs(x1-x2)):
+        moveForward()
+
+    #POINT 3
+    if y2 - y3 > 0:
+        turnTowards("N")
+    else:
+        turnTowards("S")
+    for i in range(currentY, currentY + abs(y2 - y3)):
+        moveForward()
+
+    if x2 - x3 > 0:
+        turnTowards("W")
+    else:
+        turnTowards("E")
+
+    for i in range(currentX, currentX + abs(x2-x3)):
+        moveForward()
+    
+    #POINT 3
+    if y3 - y4 > 0:
+        turnTowards("N")
+    else:
+        turnTowards("S")
+    for i in range(currentY, currentY + abs(y3 - y4)):
+        moveForward()
+
+    if x3 - x4 > 0:
+        turnTowards("W")
+    else:
+        turnTowards("E")
+
+    for i in range(currentX, currentX + abs(x3-x4)):
+        moveForward()
+
+def turnTowards(direction):
+    print("Turning ", direction)
+    while(currentDir != direction):
+        turnRight()
+
 def dispMap():
+    global pathMatrix
+    
     for row in pathMatrix:
         sys.stdout.write('|') # Vertical lines in grid
         for item in row:
-            if item == WALL_KEY:    
+            if item == WALL_KEY:
                 sys.stdout.write(WALL_CHAR)
             elif item == OPEN_KEY:
                 sys.stdout.write(CLEAR_CHAR)
@@ -62,6 +153,23 @@ def addWalls(direction):
         for row in pathMatrix:
             row.insert(0,FILL_NUM) # Add filler at start of every row 
 
+def emptyMap(x,y):
+    
+    FILL_NUM = OPEN_KEY
+    
+    for i in range(0, x):
+        pathMatrix[0].append(FILL_NUM)
+            
+    tempList = []
+
+    for item in pathMatrix[0]:
+        tempList.append(FILL_NUM)
+    
+    for i in range(0, y):
+        pathMatrix.append(tempList)
+
+    dispMap() 
+
 def checkEdges():
     global currentX
     global currentY
@@ -86,7 +194,9 @@ def moveForward():
     global currentDir
     global pathMatrix
     
-    checkEdges()
+    #checkEdges()
+    driveLibrary.driveDistance()
+    
     if currentDir == "N":
         currentY -= 1
     elif currentDir == "E":
@@ -97,7 +207,9 @@ def moveForward():
         currentX -= 1
         
     pathMatrix[currentY][currentX] = OPEN_KEY
-    checkEdges()
+    #checkEdges()
+
+    print("Moved to:", currentX, currentY)
 
 def updateScanDir():
     global currentDir
@@ -111,6 +223,8 @@ def updateScanDir():
 def turnRight():
     global currentDir
     global scanDir
+
+    driveLibrary.turnRight()
     
     currentDir = numToDir(dirToNum(currentDir) + 1)
     scanDir = currentDir
@@ -120,21 +234,25 @@ def turnLeft():
     global currentDir
     global scanDir
     
+    driveLibrary.turnLeft()
+    
     currentDir = numToDir(dirToNum(currentDir) - 1)
     scanDir = currentDir
     print("Current Direction is:", currentDir)
     
 def scanSurroundings():
     global scanDir
-    
+    global scanPos
+
     checkEdges()
     updateScanDir()
     
     print("Current position: ", currentX, currentY)
     
-    for i in ["F", "R", "L"]:
+    for i in ["F", "R", "L", "F"]:
         driveLibrary.rotateScanner(i)
-        
+        scanPos = i
+        scanDir = updateScanDir()
         print("Scanning: ", scanDir)
         if driveLibrary.isClear():
             if scanDir == "N":

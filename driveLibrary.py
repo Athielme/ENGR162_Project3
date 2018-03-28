@@ -41,7 +41,7 @@ SCAN_R_ENCODER = -90
 SCAN_L_ENCODER = 90
 SCAN_MOVE_SPEED = 50 # dps
 SCAN_TOLERANCE = 1
-IR_TOLERANCE = 10
+IR_TOLERANCE = 1
 
 def isClear():
     try:
@@ -77,7 +77,7 @@ def rotateScanner(direction):
             if encoder_dif < 0:
                 BP.set_motor_dps(BEACON_MOTOR, SCAN_MOVE_SPEED)
             elif encoder_dif > 0:
-                BP.set_motor_dps(BEACON_MOTOR, SCAN_MOVE_SPEED)
+                BP.set_motor_dps(BEACON_MOTOR, -SCAN_MOVE_SPEED)
                 
             encoder_dif = BP.get_motor_encoder(BEACON_MOTOR) - SCAN_F_ENCODER
     
@@ -124,17 +124,6 @@ def driveSpeed(cmps = None): #drives straight at given speed in cm/s
     dps = (cmps*180)/((WHEEL_DIAMETER/2)*3.14)
     BP.set_motor_dps(RIGHT_MOTOR+LEFT_MOTOR, dps)
 
-def goToPoint(x,y):
-    relativeX = x - SLAM.currentX
-    relaticeY = y - SLAM.currentY
-    
-    for a in range(0, x):
-        driveForward()
-
-
-def turnTo(direction):
-    while SLAM.currentDir != direction:
-        turnRight()
     
 def driveDistance(target_distance = GRID_DIST, cmps = None): #drives a given distance (cm) at speed (cm/s)
      if cmps == None:
@@ -149,8 +138,7 @@ def driveDistance(target_distance = GRID_DIST, cmps = None): #drives a given dis
           distance_traveled = abs(3.14*WHEEL_DIAMETER*(float(encoder_dif)/360))
      BP.set_motor_dps(RIGHT_MOTOR+LEFT_MOTOR, 0)
      print("Traveled", distance_traveled, "cm")
-     SLAM.moveForward()
-     SLAM.dispMap()
+     
 
 def turnLeft(degrees = 90):
     
@@ -171,7 +159,6 @@ def turnLeft(degrees = 90):
 
     print("Turn finished.")
     print("Arc length traveled:", arc_length_traveled)
-    SLAM.turnLeft()
     BP.set_motor_power(LEFT_MOTOR + RIGHT_MOTOR, 0)
     
 def turnRight(degrees = 360):
@@ -193,7 +180,6 @@ def turnRight(degrees = 360):
 
     print("Turn finished.")
     print("Arc length traveled:", arc_length_traveled)
-    SLAM.turnRight()
     BP.set_motor_power(LEFT_MOTOR + RIGHT_MOTOR, 0)
 
 def pathFind():
