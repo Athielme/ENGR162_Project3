@@ -1,25 +1,37 @@
 import sys
+#import driveLibrary
 
 CLEAR_CHAR = 'X'
 WALL_CHAR = ' '
+
+OPEN_KEY = 1
+WALL_KEY = 0
+ORIGIN_KEY = 10
+BIO_KEY = 2
+NH_KEY = 3
+RAD_KEY = 4
+MRI_KEY = 5
+OS_KEY = 6
+EXT_KEY = 7
 
 currentX = 0
 currentY = 0
 currentDir = "S"
 scanDir = "S"
+scanPos = "F"
 
-mapMatrix = [[0]]
+pathMatrix = [[OPEN_KEY]]
 
 def dispMap():
-    for row in mapMatrix:
+    for row in pathMatrix:
         sys.stdout.write('|') # Vertical lines in grid
         for item in row:
-            if item == 1:    
+            if item == WALL_KEY:    
                 sys.stdout.write(WALL_CHAR)
-            elif item == 0:
+            elif item == OPEN_KEY:
                 sys.stdout.write(CLEAR_CHAR)
             else:
-                sys.stdout.write("ERROR, INVALID CHARACTER IN mapMatrix!")
+                sys.stdout.write("ERROR, INVALID CHARACTER IN pathMatrix!")
             sys.stdout.write('|') # Vertical lines in grid
         print() # Newline for horizontal lines
         for item in row:
@@ -28,26 +40,26 @@ def dispMap():
 
 def addWalls(direction):
     
-    FILL_NUM = 1 # Number to fill lists with
+    FILL_NUM = WALL_KEY # Number to fill lists with
     
     if direction == "N": # North
         tempList = [] # Create list of filler numbers
-        for item in mapMatrix[0]: # number of columns
+        for item in pathMatrix[0]: # number of columns
             tempList.append(FILL_NUM)
-        mapMatrix.insert(0,tempList) # Set as top row
+        pathMatrix.insert(0,tempList) # Set as top row
         
     elif direction == "S": # South
         tempList = [] # Create list of filler numbers
-        for item in mapMatrix[0]: # number of columns
+        for item in pathMatrix[0]: # number of columns
             tempList.append(FILL_NUM)
-        mapMatrix.append(tempList) # Set as bottom row    
+        pathMatrix.append(tempList) # Set as bottom row    
     
     elif direction == "E": # East
-        for row in mapMatrix: 
+        for row in pathMatrix: 
             row.append(FILL_NUM) # Add filler at end of every row
     
     elif direction == "W": # West
-        for row in mapMatrix:
+        for row in pathMatrix:
             row.insert(0,FILL_NUM) # Add filler at start of every row 
 
 def checkEdges():
@@ -57,14 +69,14 @@ def checkEdges():
         print("On west edge")
         addWalls("W")
         currentX = 1
-    if currentX == len(mapMatrix[0]) - 1:
+    if currentX == len(pathMatrix[0]) - 1:
         print("On east edge")
         addWalls("E")
     if currentY == 0:
         print("On north edge")
         addWalls("N")
         currentY = 1
-    if currentY == len(mapMatrix) - 1:
+    if currentY == len(pathMatrix) - 1:
         print("On south edge")
         addWalls("S")
     
@@ -72,7 +84,7 @@ def moveForward():
     global currentX
     global currentY
     global currentDir
-    global mapMatrix
+    global pathMatrix
     
     checkEdges()
     if currentDir == "N":
@@ -84,20 +96,17 @@ def moveForward():
     elif currentDir == "W":
         currentX -= 1
         
-    mapMatrix[currentY][currentX] = 0
+    pathMatrix[currentY][currentX] = OPEN_KEY
     checkEdges()
-    
-def isClear():
-    return int(input("Clear? ")) # TEMPORARY!!!! NEEDS TO BE CODED
 
-def rotateScanner():
+def updateScanDir():
+    global currentDir
     global scanDir
+    global scanPos
     
-    curDirNum = dirToNum(currentDir)
-    scanDirNum = dirToNum(scanDir)
+    scanDir = numToDir(dirToNum(currentDir) + dirToNum(scanPos))
     
-    scanDir = numToDir(curDirNum + scanDirNum + 1)
-    # TEMPORARY!!!! NEEDS TO BE CODED
+    return scanDir
     
 def turnRight():
     global currentDir
@@ -105,6 +114,7 @@ def turnRight():
     
     currentDir = numToDir(dirToNum(currentDir) + 1)
     scanDir = currentDir
+    print("Current Direction is:", currentDir)
     
 def turnLeft():
     global currentDir
@@ -112,43 +122,48 @@ def turnLeft():
     
     currentDir = numToDir(dirToNum(currentDir) - 1)
     scanDir = currentDir
+    print("Current Direction is:", currentDir)
     
 def scanSurroundings():
     global scanDir
     
     checkEdges()
-    scanDir = currentDir
+    updateScanDir()
+    
     print("Current position: ", currentX, currentY)
     
-    for i in ["F", "R", "B", "L"]:
+    for i in ["F", "R", "L"]:
+        driveLibrary.rotateScanner(i)
+        
         print("Scanning: ", scanDir)
-        if isClear():
+        if driveLibrary.isClear():
             if scanDir == "N":
-                mapMatrix[currentY - 1][currentX] = 0
+                pathMatrix[currentY - 1][currentX] = OPEN_KEY
                 
             elif scanDir == "E":
-                mapMatrix[currentY][currentX + 1] = 0
+                pathMatrix[currentY][currentX + 1] = OPEN_KEY
                 
             elif scanDir == "S":
-                mapMatrix[currentY + 1][currentX] = 0
+                pathMatrix[currentY + 1][currentX] = OPEN_KEY
                 
             elif scanDir == "W":
-                mapMatrix[currentY][currentX - 1] = 0
+                pathMatrix[currentY][currentX - 1] = OPEN_KEY
                 
         else:
             if scanDir == "N":
-                mapMatrix[currentY - 1][currentX] = 1
+                pathMatrix[currentY - 1][currentX] = WALL_KEY
                 
             elif scanDir == "E":
-                mapMatrix[currentY][currentX + 1] = 1
+                pathMatrix[currentY][currentX + 1] = WALL_KEY
                 
             elif scanDir == "S":
-                mapMatrix[currentY + 1][currentX] = 1
+                pathMatrix[currentY + 1][currentX] = WALL_KEY
                 
             elif scanDir == "W":
-                mapMatrix[currentY][currentX - 1] = 1      
+                pathMatrix[currentY][currentX - 1] = WALL_KEY      
                 
-        rotateScanner()
+        dispMap()
+        
         
     
 def dirToNum(direction):
