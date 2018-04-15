@@ -1,4 +1,2 @@
-import SLAM
-import driveLibrary
-
-
+import SLAM as s
+import driveLibrary as l

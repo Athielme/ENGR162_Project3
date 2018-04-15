@@ -1,5 +1,6 @@
 import sys
 import driveLibrary
+import time
 
 CLEAR_CHAR = 'X'
 WALL_CHAR = ' '
@@ -14,11 +15,15 @@ MRI_KEY = 5
 OS_KEY = 6
 EXT_KEY = 7
 
-currentX = 0
-currentY = 0
+start_x = 3
+start_y = 0
+currentX = start_x
+currentY = start_y
 currentDir = "S"
 scanDir = "S"
 scanPos = "F"
+
+unexploredMatrix = [[start_x, start_y + 1]]
 
 pathMatrix = [[OPEN_KEY]]
 
@@ -53,11 +58,11 @@ def goToFourPoints(x1,y1,x2,y2,x3,y3,x4,y4):
         moveForward()
 
     
-    turnTowards("E")
+    turnTowards("W")
 
     for i in range(currentX, x1):
         moveForward()
-
+    time.sleep(5)
     #POINT 2
     if y1 - y2 > 0:
         turnTowards("N")
@@ -74,6 +79,7 @@ def goToFourPoints(x1,y1,x2,y2,x3,y3,x4,y4):
     for i in range(currentX, currentX + abs(x1-x2)):
         moveForward()
 
+    time.sleep(5)
     #POINT 3
     if y2 - y3 > 0:
         turnTowards("N")
@@ -89,7 +95,7 @@ def goToFourPoints(x1,y1,x2,y2,x3,y3,x4,y4):
 
     for i in range(currentX, currentX + abs(x2-x3)):
         moveForward()
-    
+    time.sleep(5)
     #POINT 3
     if y3 - y4 > 0:
         turnTowards("N")
@@ -112,6 +118,7 @@ def turnTowards(direction):
         turnRight()
 
 def dispMap():
+    checkEdges()
     global pathMatrix
     
     for row in pathMatrix:
