@@ -15,7 +15,7 @@ MRI_KEY = 5
 OS_KEY = 6
 EXT_KEY = 7
 
-start_x = 3
+start_x = 0
 start_y = 0
 currentX = start_x
 currentY = start_y
@@ -23,94 +23,14 @@ currentDir = "S"
 scanDir = "S"
 scanPos = "F"
 
-unexploredMatrix = [[start_x, start_y + 1]]
+unexploredPts = [[start_x, start_y + 1]]
 
 pathMatrix = [[OPEN_KEY]]
+
 
 def advance():
     moveForward()
     scanSurroundings()
-
-def goToFourPoints(x1,y1,x2,y2,x3,y3,x4,y4):
-    global currentX
-    global currentY
-    global pathMatrix
-    
-    xlist = [x1,x2,x3,x4]
-    ylist = [y1,y2,y3,y4]
-
-    xmax = x1
-    for x in xlist:
-        if x > xmax:
-            xmax = x
-
-    ymax = y1
-    for y in ylist:
-        if y > ymax:
-            ymax = y
-
-    emptyMap(xmax, ymax)
-
-    currentX = 1
-    currentY = 1
-
-    for i in range(currentY, y1):
-        moveForward()
-
-    
-    turnTowards("W")
-
-    for i in range(currentX, x1):
-        moveForward()
-    time.sleep(5)
-    #POINT 2
-    if y1 - y2 > 0:
-        turnTowards("N")
-    else:
-        turnTowards("S")
-    for i in range(currentY, currentY + abs(y1 - y2)):
-        moveForward()
-
-    if x1 - x2 > 0:
-        turnTowards("W")
-    else:
-        turnTowards("E")
-
-    for i in range(currentX, currentX + abs(x1-x2)):
-        moveForward()
-
-    time.sleep(5)
-    #POINT 3
-    if y2 - y3 > 0:
-        turnTowards("N")
-    else:
-        turnTowards("S")
-    for i in range(currentY, currentY + abs(y2 - y3)):
-        moveForward()
-
-    if x2 - x3 > 0:
-        turnTowards("W")
-    else:
-        turnTowards("E")
-
-    for i in range(currentX, currentX + abs(x2-x3)):
-        moveForward()
-    time.sleep(5)
-    #POINT 3
-    if y3 - y4 > 0:
-        turnTowards("N")
-    else:
-        turnTowards("S")
-    for i in range(currentY, currentY + abs(y3 - y4)):
-        moveForward()
-
-    if x3 - x4 > 0:
-        turnTowards("W")
-    else:
-        turnTowards("E")
-
-    for i in range(currentX, currentX + abs(x3-x4)):
-        moveForward()
 
 def turnTowards(direction):
     print("Turning ", direction)
@@ -175,7 +95,7 @@ def emptyMap(x,y):
     for i in range(0, y):
         pathMatrix.append(tempList)
 
-    dispMap() 
+    dispMap()
 
 def checkEdges():
     global currentX
@@ -250,7 +170,8 @@ def turnLeft():
 def scanSurroundings():
     global scanDir
     global scanPos
-
+    global unexploredPts
+    
     checkEdges()
     updateScanDir()
     
@@ -261,36 +182,54 @@ def scanSurroundings():
         scanPos = i
         scanDir = updateScanDir()
         print("Scanning: ", scanDir)
-        if driveLibrary.isClear():
-            if scanDir == "N":
-                pathMatrix[currentY - 1][currentX] = OPEN_KEY
+        
+        if scanDir == "N":
+            check_x = currentX
+            check_y = currentY - 1
                 
-            elif scanDir == "E":
-                pathMatrix[currentY][currentX + 1] = OPEN_KEY
+        elif scanDir == "E":
+            check_x = currentX + 1
+            check_y = currentY
+            
+        elif scanDir == "S":
+            check_x = currentX
+            check_y = currentY + 1
                 
-            elif scanDir == "S":
-                pathMatrix[currentY + 1][currentX] = OPEN_KEY
-                
-            elif scanDir == "W":
-                pathMatrix[currentY][currentX - 1] = OPEN_KEY
-                
-        else:
-            if scanDir == "N":
-                pathMatrix[currentY - 1][currentX] = WALL_KEY
-                
-            elif scanDir == "E":
-                pathMatrix[currentY][currentX + 1] = WALL_KEY
-                
-            elif scanDir == "S":
-                pathMatrix[currentY + 1][currentX] = WALL_KEY
-                
-            elif scanDir == "W":
-                pathMatrix[currentY][currentX - 1] = WALL_KEY      
-                
+        elif scanDir == "W":
+            check_x = currentX - 1
+            check_y = currentY
+
+        clear_var = driveLibrary.isClear()
+
+        checkEdges()
+        
+        if clear_var == 1:
+            pathMatrix[check_y][check_x] = OPEN_KEY
+            unexploredPts.append([check_x, check_y])
+            
+        elif clear_var == 2:
+            pathMatrix[check_y][check_x] = WALL_KEY
+            try:
+                unexploredPts.remove([check_x, check_y])
+            except:
+                pass
+
+        elif clear_var == 3:
+            pathMatrix[check_y][check_x] = OPEN_KEY
+            unexploredPts.append([check_x, check_y])
+
+        unexploredPts = removeDuplicates(unexploredPts)
+        
         dispMap()
         
         
-    
+def removeDuplicates(starting_list):
+    final_list = []
+    for i in starting_list:
+        if i not in final_list:
+            final_list.append(i)
+    return final_list
+
 def dirToNum(direction):
     
     if direction == "N" or direction == "F":
@@ -331,3 +270,4 @@ def numToDir(number):
         return "S"
     elif number == 3:
         return "W"
+

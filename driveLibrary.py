@@ -48,6 +48,10 @@ SCAN_MOVE_SPEED = 50 # dps
 SCAN_TOLERANCE = 1
 
 
+################SCANNING VARS#################
+WALL_DISTANCE = 25
+OBJ_DISTANCE = 39
+
 BP.set_sensor_type(mag_sensor_port, BP.SENSOR_TYPE.CUSTOM, [(BP.SENSOR_CUSTOM.PIN1_ADC)]) # Configure for an analog on sensor port pin 1, and poll the analog line on pin 1.
 BP.set_sensor_type(BUTTON, BP.SENSOR_TYPE.NXT_TOUCH)
 #BP.set_sensor_type(mag_sensor_port, BP.SENSOR_TYPE.NXT_LIGHT_ON)
@@ -67,21 +71,21 @@ def isClear():
         ultra = grovepi.ultrasonicRead(ultrasonic_sensor_port)
         ir = IR_Functions.IR_Read(grovepi)
         print(ultra)
-    
+
     except IOError:
         print("Error reading sensors in isClear()")
         return 0
     
-    if ultra > STOP_DISTANCE and ir[0] < IR_TOLERANCE:
-        print("No wall or beacon detected")
-        return 1
+    if ultra <= WALL_DISTANCE:
+        print("Wall detected!")
+        return 2
     
-    elif ultra < STOP_DISTANCE and ir[0] < IR_TOLERANCE:
-        print("Wall detected")
-        return 0
+    elif ultra > WALL_DISTANCE and ultra <= OBJ_DISTANCE:
+        print("Object detected")
+        return 3
     
-    elif ultra < STOP_DISTANCE and ir[0] > IR_TOLERANCE:
-        print("Beacon detected")
+    elif ultra > OBJ_DISTANCE:
+        print("No wall detected")
         return 1
 
 def rotateScanner(direction):
