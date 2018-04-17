@@ -15,19 +15,48 @@ MRI_KEY = 5
 OS_KEY = 6
 EXT_KEY = 7
 
+resourceKeys = [
+            ORIGIN_KEY,
+            BIO_KEY,
+            NH_KEY,
+            RAD_KEY,
+            MRI_KEY,
+            OS_KEY,
+            EXT_KEY
+            ]
+
+
 start_x = 0
 start_y = 0
 currentX = start_x
 currentY = start_y
-currentDir = "S"
-scanDir = "S"
+currentDir = "N"
+scanDir = "N"
 scanPos = "F"
 
 unexploredPts = [[start_x, start_y + 1]]
 
-pathMatrix = [[OPEN_KEY]]
+pathMatrix = [[OPEN_KEY]] # Matrix that stores availble paths for mvmt
+origin_coords = [start_x, start_y]
+mri_coords = []
+bio_coords = []
+nh_coords = []
+rad_coords =[]
+ext_coords = []
+os_coords = []
+resourceList = []
 
-
+def makeResourceList():
+    resourceList = [
+            origin_coords,
+            bio_coords,
+            nh_coords,
+            rad_coords,
+            mri_coords,
+            os_coords,
+            ext_coords
+            ]
+    return
 def advance():
     moveForward()
     scanSurroundings()
@@ -56,6 +85,23 @@ def dispMap():
             sys.stdout.write('--') # Horizontal lines
         print() # Newline for next row of map
 
+def completeMap():
+    x_counter = 0
+    y_counter = 0
+    cat_counter = 0
+    for row in pathMatrix:
+        for item in row:
+            cat_counter = 0
+            for category in resourceList:
+                resource = 0
+                for coord in category:
+                    if x_counter == coord[0] and y_counter == coord[1]:
+                        sys.stdout.write(resourceKeys[cat_counter])
+                        resource = 1
+                cat_counter += 1
+        x_counter += 1
+    y_counter += 1
+
 def addWalls(direction):
     
     FILL_NUM = WALL_KEY # Number to fill lists with
@@ -64,7 +110,7 @@ def addWalls(direction):
         tempList = [] # Create list of filler numbers
         for item in pathMatrix[0]: # number of columns
             tempList.append(FILL_NUM)
-        pathMatrix.insert(0,tempList) # Set as top row
+        pathMatrix.append(tempList) # Set as top row
         
     elif direction == "S": # South
         tempList = [] # Create list of filler numbers
@@ -107,13 +153,13 @@ def checkEdges():
     if currentX == len(pathMatrix[0]) - 1:
         print("On east edge")
         addWalls("E")
-    if currentY == 0:
-        print("On north edge")
-        addWalls("N")
-        currentY = 1
+#    if currentY == 0:
+#        print("On South edge")
+#        addWalls("S")
+#        currentY = 1
     if currentY == len(pathMatrix) - 1:
-        print("On south edge")
-        addWalls("S")
+        print("On North edge")
+        addWalls("N")
     
 def moveForward():
     global currentX
@@ -125,11 +171,11 @@ def moveForward():
     driveLibrary.driveDistance()
     
     if currentDir == "N":
-        currentY -= 1
+        currentY += 1
     elif currentDir == "E":
         currentX += 1
     elif currentDir == "S":
-        currentY += 1
+        currentY -= 1
     elif currentDir == "W":
         currentX -= 1
         
@@ -185,7 +231,7 @@ def scanSurroundings():
         
         if scanDir == "N":
             check_x = currentX
-            check_y = currentY - 1
+            check_y = currentY + 1
                 
         elif scanDir == "E":
             check_x = currentX + 1
@@ -193,7 +239,7 @@ def scanSurroundings():
             
         elif scanDir == "S":
             check_x = currentX
-            check_y = currentY + 1
+            check_y = currentY - 1
                 
         elif scanDir == "W":
             check_x = currentX - 1
