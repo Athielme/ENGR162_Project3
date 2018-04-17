@@ -16,6 +16,7 @@ OS_KEY = 6
 EXT_KEY = 7
 
 resourceKeys = [
+            OPEN_KEY,
             ORIGIN_KEY,
             BIO_KEY,
             NH_KEY,
@@ -26,7 +27,7 @@ resourceKeys = [
             ]
 
 
-start_x = 0
+start_x = 4
 start_y = 0
 currentX = start_x
 currentY = start_y
@@ -35,19 +36,23 @@ scanDir = "N"
 scanPos = "F"
 
 unexploredPts = [[start_x, start_y + 1]]
+exploredPts = [[start_x, start_y]]
 
 pathMatrix = [[OPEN_KEY]] # Matrix that stores availble paths for mvmt
-origin_coords = [start_x, start_y]
-mri_coords = []
-bio_coords = []
-nh_coords = []
-rad_coords =[]
-ext_coords = []
-os_coords = []
+origin_coords = [[start_x, start_y]]
+mri_coords = [[2,6]]
+bio_coords = [[8,8]]
+nh_coords = [[]]
+rad_coords =[[1,1],[1,2]]
+ext_coords = [[9,9]]
+os_coords = [[1,1]]
 resourceList = []
 
 def makeResourceList():
+    global resourceList
+    
     resourceList = [
+            exploredPts,
             origin_coords,
             bio_coords,
             nh_coords,
@@ -56,6 +61,11 @@ def makeResourceList():
             os_coords,
             ext_coords
             ]
+    
+    for category in resourceList:
+        for item in category:
+            if exploredPts.count(item) == 0:
+                exploredPts.append(item)
     return
 def advance():
     moveForward()
@@ -67,11 +77,10 @@ def turnTowards(direction):
         turnRight()
 
 def dispMap():
-    checkEdges()
     global pathMatrix
     
     for row in pathMatrix:
-        sys.stdout.write('|') # Vertical lines in grid
+#        sys.stdout.write('|') # Vertical lines in grid
         for item in row:
             if item == WALL_KEY:
                 sys.stdout.write(WALL_CHAR)
@@ -79,28 +88,56 @@ def dispMap():
                 sys.stdout.write(CLEAR_CHAR)
             else:
                 sys.stdout.write("ERROR, INVALID CHARACTER IN pathMatrix!")
-            sys.stdout.write('|') # Vertical lines in grid
-        print() # Newline for horizontal lines
-        for item in row:
-            sys.stdout.write('--') # Horizontal lines
+#            sys.stdout.write('|') # Vertical lines in grid
+#        print() # Newline for horizontal lines
+#        for item in row:
+#            sys.stdout.write('--') # Horizontal lines
         print() # Newline for next row of map
 
 def completeMap():
+    mapList = [[]]
+    makeResourceList()
     x_counter = 0
     y_counter = 0
     cat_counter = 0
     for row in pathMatrix:
+        mapList.append([])
         for item in row:
-            cat_counter = 0
-            for category in resourceList:
-                resource = 0
-                for coord in category:
-                    if x_counter == coord[0] and y_counter == coord[1]:
-                        sys.stdout.write(resourceKeys[cat_counter])
-                        resource = 1
-                cat_counter += 1
-        x_counter += 1
-    y_counter += 1
+            for pt in exploredPts: # Check all explored points
+                resource = 0 # Default no resource at pt
+                if x_counter == pt[0] and y_counter == pt[1]: # If current x 
+                    cat_counter = 0
+                    for category in resourceList:
+                        for coord in category:
+                            print(coord)
+                            if resource == 0 and x_counter == coord[0] and y_counter == coord[1]:
+                                mapList[y_counter].append(resourceKeys[cat_counter])
+                                print("found")
+                                resource = 1
+                    cat_counter += 1
+                    if resource == 0:
+                        mapList[y_counter].append(OPEN_KEY)
+                else:
+                    mapList[y_counter].append(WALL_KEY)
+            x_counter += 1
+        y_counter += 1
+    print(mapList)
+
+def completeMap2():
+    global resourceList
+    mapList = pathMatrix[:]
+    makeResourceList()
+    cat_counter = 0
+    for category in resourceList:
+        for pt in category:
+            print(pt)
+            try:
+                mapList[pt[1]][pt[0]] = resourceKeys[cat_counter]
+            except:
+                pass
+            #print(mapList[pt[1]][pt[0]])
+        cat_counter += 1
+    print(mapList)
 
 def addWalls(direction):
     
@@ -127,19 +164,22 @@ def addWalls(direction):
             row.insert(0,FILL_NUM) # Add filler at start of every row 
 
 def emptyMap(x,y):
+    global pathMatrix
     
     FILL_NUM = OPEN_KEY
-    
-    for i in range(0, x):
-        pathMatrix[0].append(FILL_NUM)
-            
-    tempList = []
 
-    for item in pathMatrix[0]:
-        tempList.append(FILL_NUM)
+    pathMatrix = [[FILL_NUM] * x for i in range(y)]
     
-    for i in range(0, y):
-        pathMatrix.append(tempList)
+##    for i in range(0, x - 1):
+##        pathMatrix[0].append(FILL_NUM)
+##            
+##    tempList = []
+##
+##    for item in pathMatrix[0]:
+##        tempList.append(FILL_NUM)
+##    
+##    for i in range(0, y - 1):
+##        pathMatrix.append([0] * 4 for i in range(len(pathMatrix[0])))
 
     dispMap()
 
@@ -153,10 +193,10 @@ def checkEdges():
     if currentX == len(pathMatrix[0]) - 1:
         print("On east edge")
         addWalls("E")
-#    if currentY == 0:
-#        print("On South edge")
-#        addWalls("S")
-#        currentY = 1
+    if currentY == 0:
+        print("On South edge")
+        addWalls("S")
+        currentY = 1
     if currentY == len(pathMatrix) - 1:
         print("On North edge")
         addWalls("N")
@@ -167,7 +207,6 @@ def moveForward():
     global currentDir
     global pathMatrix
     
-    #checkEdges()
     driveLibrary.driveDistance()
     
     if currentDir == "N":
@@ -180,7 +219,6 @@ def moveForward():
         currentX -= 1
         
     pathMatrix[currentY][currentX] = OPEN_KEY
-    #checkEdges()
 
     print("Moved to:", currentX, currentY)
 
