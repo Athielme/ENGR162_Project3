@@ -121,7 +121,7 @@ def calibrateSensors():
     dist = abs(3.14*WHEEL_DIAMETER*(float(encoder_dif)/360))
     t = 0
     time_step = .1
-    while(dist < 30):
+    while(dist < 40):
         time.sleep(time_step)
         t += time_step
         mag = mpu9250.readMagnet()
@@ -377,6 +377,18 @@ def inspectCargo():
         print("Yellow")
     print(BP.get_sensor(LIGHT))
     
+def gridCargo():
+    ultra = 40
+    target = 30
+    target_dist = -15
+    BP.set_motor_dps(RIGHT_MOTOR + LEFT_MOTOR, 75)
+    while abs(ultra - target) > 2:
+        ultra = grovepi.ultrasonicRead(ultrasonic_sensor_port)
+        print(ultra - target)
+    BP.set_motor_dps(RIGHT_MOTOR + LEFT_MOTOR, 0)
+    turnRight(degrees = 180)
+    driveDistance(target_distance = target_dist)
+    inspectCargo()
 
 def run(letter, dps):
     if (letter == "A"): #front right
