@@ -7,7 +7,17 @@ import time     # import the time library for the sleep function
 import grovepi
 import brickpi3 # import the BrickPi3 drivers
 import SLAM
+import math
+from MPU9250 import MPU9250
 import IR_Functions
+
+from IMUFilters import AvgCali
+from IMUFilters import genWindow
+from IMUFilters import WindowFilterDyn
+from IMUFilters import KalmanFilter
+
+from IMUFilters import FindSTD
+from IMUFilters import InvGaussFilter
 
 
 BP = brickpi3.BrickPi3() # Create an instance of the BrickPi3 class. BP will be the BrickPi3 object.
@@ -58,9 +68,120 @@ BP.set_sensor_type(BUTTON, BP.SENSOR_TYPE.NXT_TOUCH)
 BP.set_sensor_type(LIGHT, BP.SENSOR_TYPE.NXT_LIGHT_ON)
 IR_TOLERANCE = 1
 
+#############IMU FILTERING####################
+
+mpu9250 = MPU9250()
+
+#Parameters
+width=2
+depth=100
+dly=0.01
+adv = True
+#/////////
+
+flter=[[0.7,1.0],[0.7,1.0],[0.7,1.0],[0.7,1.0],[0.7,1.0],[0.7,1.0]]# [r,q]Will need to play with each filter value
+biases=AvgCali(mpu9250,depth,dly)
+state=[[0.0,0.0,0.0,0.0,0.0,0.0],[0,0,0,0,0,0]]#Estimated error (p) and measurement state (x) 
+out=[0,0,0,0,0,0]
+std=FindSTD(biases,mpu9250,dly)
+pick = 1 #1 uses window filter, anything else uses Kalman
+count = 3 #Number of standard deviations used for filtering
+
+#############################################
+
 #while(1 == 1):
     #print(BP.get_sensor(mag_sensor_port))
 
+def wallFollow():
+    time_step = .01
+    C = 20
+    BASE = 100
+    while(grovepi.ultrasonicRead(ultrasonic_sensor_port) > 0):
+        ultra = grovepi.ultrasonicRead(ultrasonic_sensor_port)
+        error = (ultra - 9)
+        print("Ultra:", ultra, "Error", error)
+        if(error == 0):
+            BP.set_motor_dps(RIGHT_MOTOR + LEFT_MOTOR, BASE)
+        if(error > 0):
+            BP.set_motor_dps(RIGHT_MOTOR, BASE) 
+            BP.set_motor_dps(LEFT_MOTOR, BASE + error*C)
+        elif(error < 0):
+            BP.set_motor_dps(LEFT_MOTOR, BASE) 
+            BP.set_motor_dps(RIGHT_MOTOR, BASE + error*C)
+
+
+def calibrateSensors():
+    filename = input("Input file name:")
+    fid = open(filename, 'w')
+    header = "Time, Dist, Mag, , , Mag magnitude, IR 0, IR 1, Ultra\n"
+    fid.write(header)
+    encoder_start = BP.get_motor_encoder(RIGHT_MOTOR)
+    BP.set_motor_dps(RIGHT_MOTOR + LEFT_MOTOR, 75)
+    encoder_dif = 0
+    dist = abs(3.14*WHEEL_DIAMETER*(float(encoder_dif)/360))
+    t = 0
+    time_step = .1
+    while(dist < 30):
+        time.sleep(time_step)
+        t += time_step
+        mag = mpu9250.readMagnet()
+        mag_magnitude = math.sqrt(mag[0]**2 + mag[1]**2 + mag[2]**2)
+        ir = IR_Functions.IR_Read(grovepi)
+        encoder_dif = BP.get_motor_encoder(RIGHT_MOTOR) - encoder_start
+        ultra = grovepi.ultrasonicRead(ultrasonic_sensor_port)
+        dist = abs(3.14*WHEEL_DIAMETER*(float(encoder_dif)/360))
+        output = str(t) + ',' + str(dist) + ',' + str(mag[0]) + ',' + str(mag[1]) + ',' + str(mag[2]) + ',' + str(mag_magnitude) + ',' +  str(ir[0]) + ',' +  str(ir[1]) + ',' +  str(ultra)
+        fid.write(output)
+        fid.write("\n")
+    fid.close()
+    BP.set_motor_dps(RIGHT_MOTOR + LEFT_MOTOR, 0)
+    end()
+
+def gridForward():
+    rotateScanner("L")
+    left_dist = grovepi.ultrasonicRead(ultrasonic_sensor_port) -7
+    rotateScanner("R")
+    right_dist = grovepi.ultrasonicRead(ultrasonic_sensor_port) - 2
+    rotateScanner("F")
+    grid_dist = 40
+
+    
+    diff = abs(right_dist-left_dist)
+    angle = math.degrees(math.atan(diff/grid_dist))
+    hypot = math.hypot(grid_dist, diff)
+    
+    print("Right distance:", right_dist)
+    print("Left distance:", left_dist)
+    print("Correction:", diff)
+    
+    if right_dist < left_dist:
+        print("Turning", angle, "degrees left")
+        turnLeft(degrees = angle)
+    
+    elif left_dist < right_dist:
+        print("Turning", angle, "degrees right")
+        turnRight(degrees = angle)
+    
+    else:
+        print("No correction needed")
+    
+    driveDistance(target_distance = hypot)
+
+def calibrateUltra():
+    theoretical_dist = 20.29
+    rotateScanner("R")
+    right_reading = grovepi.ultrasonicRead(ultrasonic_sensor_port)
+    rotateScanner("L")
+    left_reading = grovepi.ultrasonicRead(ultrasonic_sensor_port)
+    rotateScanner("F")
+    
+    left_correction = theoretical_dist - left_reading
+    right_correction = theoretical_dist - right_reading
+
+    print("Left correction:", left_correction)
+    print("Right correciton:", right_correction)
+    
+    
 def waitForButtonPress():
     while(BP.get_sensor(BUTTON) == 0):
         print("Waiting for button press")
@@ -239,13 +360,13 @@ def pathFind():
 
 def inspectCargo():
     arm_encoder_a = BP.get_motor_encoder(ARM_MOTOR)
-    power = 15
-    BP.set_motor_power(ARM_MOTOR, -power)
+    power = 7
+    BP.set_motor_power(ARM_MOTOR, power)
     time.sleep(.1)
-    while(abs(BP.get_motor_encoder(ARM_MOTOR) - arm_encoder_a) > 1):
-        power += 10
-        BP.set_motor_power(ARM_MOTOR, -power)
-        time.sleep(.2)
+    while(abs(BP.get_motor_encoder(ARM_MOTOR) - arm_encoder_a) > 1 or power < 20):
+        power += 1
+        BP.set_motor_power(ARM_MOTOR, power)
+        time.sleep(.3)
         arm_encoder_a = BP.get_motor_encoder(ARM_MOTOR)
     BP.set_motor_power(ARM_MOTOR, 0)
     print("Power level:", power)
