@@ -1,6 +1,9 @@
 import sys
 import driveLibrary
 import time
+from pathfinding.core.diagonal_movement import DiagonalMovement
+from pathfinding.core.grid import Grid
+from pathfinding.finder.a_star import AStarFinder
 
 CLEAR_CHAR = 'X'
 WALL_CHAR = ' '
@@ -47,6 +50,56 @@ rad_coords =[[1,1],[1,2]]
 ext_coords = [[9,9]]
 os_coords = [[1,1]]
 resourceList = []
+mapList = []
+
+map_max_x = 15
+map_max_y = 20
+
+def findPath(start, end):
+    global pathMatrix
+
+    grid = Grid(matrix = pathMatrix)
+
+    start = grid.node(start[0],start[1])
+    end = grid.node(end[0],end[1])
+
+    finder = AStarFinder(diagonal_movement=DiagonalMovement.never)
+    path, runs = finder.find_path(start, end, grid)
+
+    print('operations:', runs, 'path length:', len(path))   
+    print(grid.grid_str(path=path, start=start, end=end))
+    print(path)
+    
+    return path
+
+def pathToClosestPt():
+    global currentX
+    global currentY
+    global unexploredPts
+    min_length = 100
+    path = []
+    for pt in unexploredPts:
+        length = len(findPath([currentX, currentY], pt))
+        if length > 1 and length < min_length:
+            path = findPath([currentX, currentY], pt)
+    return path
+
+def drivePath(path):
+    for pt in path:
+        goTo(pt)
+
+
+def goTo(pt):
+    if pt[0] - currentX > 0:
+        turnTowards("E")
+    elif pt[0] - currentX < 0:
+        turnTowards("W")
+    elif pt[1] - currentY > 0:
+        turnTowards("N")
+    elif pt[1] - currentY < 0:
+        turnTowards("S")
+
+    moveForward()
 
 def makeResourceList():
     global resourceList
@@ -76,6 +129,12 @@ def turnTowards(direction):
     while(currentDir != direction):
         turnRight()
 
+def flipMatrix(matrix):
+    newMatrix = []
+    for i in range(len(matrix) -1, -1, -1):
+        newMatrix.append(matrix[i])
+    return newMatrix
+
 def dispMap():
     global pathMatrix
     
@@ -94,50 +153,49 @@ def dispMap():
 #            sys.stdout.write('--') # Horizontal lines
         print() # Newline for next row of map
 
-def completeMap():
-    mapList = [[]]
-    makeResourceList()
-    x_counter = 0
-    y_counter = 0
-    cat_counter = 0
-    for row in pathMatrix:
-        mapList.append([])
-        for item in row:
-            for pt in exploredPts: # Check all explored points
-                resource = 0 # Default no resource at pt
-                if x_counter == pt[0] and y_counter == pt[1]: # If current x 
-                    cat_counter = 0
-                    for category in resourceList:
-                        for coord in category:
-                            print(coord)
-                            if resource == 0 and x_counter == coord[0] and y_counter == coord[1]:
-                                mapList[y_counter].append(resourceKeys[cat_counter])
-                                print("found")
-                                resource = 1
-                    cat_counter += 1
-                    if resource == 0:
-                        mapList[y_counter].append(OPEN_KEY)
-                else:
-                    mapList[y_counter].append(WALL_KEY)
-            x_counter += 1
-        y_counter += 1
-    print(mapList)
+##def completeMap():
+##    mapList = [[]]
+##    makeResourceList()
+##    x_counter = 0
+##    y_counter = 0
+##    cat_counter = 0
+##    for row in pathMatrix:
+##        mapList.append([])
+##        for item in row:
+##            for pt in exploredPts: # Check all explored points
+##                resource = 0 # Default no resource at pt
+##                if x_counter == pt[0] and y_counter == pt[1]: # If current x 
+##                    cat_counter = 0
+##                    for category in resourceList:
+##                        for coord in category:
+##                            print(coord)
+##                            if resource == 0 and x_counter == coord[0] and y_counter == coord[1]:
+##                                mapList[y_counter].append(resourceKeys[cat_counter])
+##                                print("found")
+##                                resource = 1
+##                    cat_counter += 1
+##                    if resource == 0:
+##                        mapList[y_counter].append(OPEN_KEY)
+##                else:
+##                    mapList[y_counter].append(WALL_KEY)
+##            x_counter += 1
+##        y_counter += 1
+##    print(mapList)
 
-def completeMap2():
+def completeMap():
     global resourceList
-    mapList = pathMatrix[:]
     makeResourceList()
     cat_counter = 0
     for category in resourceList:
         for pt in category:
-            print(pt)
             try:
                 mapList[pt[1]][pt[0]] = resourceKeys[cat_counter]
             except:
                 pass
             #print(mapList[pt[1]][pt[0]])
         cat_counter += 1
-    print(mapList)
+    for i in range(len(mapList) - 1, -1, -1):
+        print(mapList[i])
 
 def addWalls(direction):
     
@@ -165,23 +223,15 @@ def addWalls(direction):
 
 def emptyMap(x,y):
     global pathMatrix
+    global mapList
     
-    FILL_NUM = OPEN_KEY
+    FILL_NUM = WALL_KEY
 
     pathMatrix = [[FILL_NUM] * x for i in range(y)]
+    pathMatrix[start_y][start_x] = 1
+    mapList = [[FILL_NUM] * x for i in range(y)]
     
-##    for i in range(0, x - 1):
-##        pathMatrix[0].append(FILL_NUM)
-##            
-##    tempList = []
-##
-##    for item in pathMatrix[0]:
-##        tempList.append(FILL_NUM)
-##    
-##    for i in range(0, y - 1):
-##        pathMatrix.append([0] * 4 for i in range(len(pathMatrix[0])))
-
-    dispMap()
+    completeMap()
 
 def checkEdges():
     global currentX
@@ -206,6 +256,7 @@ def moveForward():
     global currentY
     global currentDir
     global pathMatrix
+    global exploredPts
     
     driveLibrary.driveDistance()
     
@@ -220,6 +271,8 @@ def moveForward():
         
     pathMatrix[currentY][currentX] = OPEN_KEY
 
+    exploredPts.append([currentX, currentY])
+    
     print("Moved to:", currentX, currentY)
 
 def updateScanDir():
@@ -256,7 +309,6 @@ def scanSurroundings():
     global scanPos
     global unexploredPts
     
-    checkEdges()
     updateScanDir()
     
     print("Current position: ", currentX, currentY)
@@ -284,8 +336,6 @@ def scanSurroundings():
             check_y = currentY
 
         clear_var = driveLibrary.isClear()
-
-        checkEdges()
         
         if clear_var == 1:
             pathMatrix[check_y][check_x] = OPEN_KEY
@@ -304,7 +354,7 @@ def scanSurroundings():
 
         unexploredPts = removeDuplicates(unexploredPts)
         
-        dispMap()
+    completeMap()
         
         
 def removeDuplicates(starting_list):
