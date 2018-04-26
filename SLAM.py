@@ -29,8 +29,7 @@ resourceKeys = [
             EXT_KEY
             ]
 
-
-start_x = 4
+start_x = 7
 start_y = 0
 currentX = start_x
 currentY = start_y
@@ -43,17 +42,21 @@ exploredPts = [[start_x, start_y]]
 
 pathMatrix = [[OPEN_KEY]] # Matrix that stores availble paths for mvmt
 origin_coords = [[start_x, start_y]]
-mri_coords = [[2,6]]
-bio_coords = [[8,8]]
-nh_coords = [[]]
-rad_coords =[[1,1],[1,2]]
-ext_coords = [[9,9]]
-os_coords = [[1,1]]
+mri_coords = []
+bio_coords = []
+nh_coords = []
+rad_coords =[]
+ext_coords = []
+os_coords = []
 resourceList = []
 mapList = []
+unknownObjs = []
 
-map_max_x = 15
-map_max_y = 20
+resourceDetails = []
+
+
+map_max_x = 10
+map_max_y = 10
 
 def findPath(start, end):
     global pathMatrix
@@ -90,6 +93,9 @@ def drivePath(path):
 
 
 def goTo(pt):
+    global exploredPts
+    global unexplredPts
+    
     if pt[0] - currentX > 0:
         turnTowards("E")
     elif pt[0] - currentX < 0:
@@ -98,8 +104,19 @@ def goTo(pt):
         turnTowards("N")
     elif pt[1] - currentY < 0:
         turnTowards("S")
+    if pt[0] == currentX and pt[1] == currentY:
+        return
+    
+    if(pt in unexploredPts):
+        print("Not correcting")
+            #driveLibrary.driveDistance()
+        moveForward()
+    else:
+        print("Correcting")
+        #driveLibrary.gridForward
+        moveForward()
 
-    moveForward()
+    
 
 def makeResourceList():
     global resourceList
@@ -120,15 +137,30 @@ def makeResourceList():
             if exploredPts.count(item) == 0:
                 exploredPts.append(item)
     return
+
 def advance():
     moveForward()
     scanSurroundings()
 
 def turnTowards(direction):
     print("Turning ", direction)
-    while(currentDir != direction):
+    current = dirToNum(currentDir)
+    target = dirToNum(direction)
+    if(target - current == 1):
         turnRight()
-
+    elif(target- current == 2):
+        turnRight()
+        turnRight()
+    elif(target- current == 3):
+        turnLeft()
+    elif(target - current == -1):
+        turnLeft()
+    elif(target - current == -2):
+        turnLeft()
+        turnLeft()
+    elif(target - current == -3):
+        turnRight()
+        
 def flipMatrix(matrix):
     newMatrix = []
     for i in range(len(matrix) -1, -1, -1):
@@ -183,6 +215,7 @@ def dispMap():
 ##    print(mapList)
 
 def completeMap():
+    file_header = "Team: 13\nMap: 4\nUnit Length: 40\nUnit: cm\nOrigin: (" + str(start_x) + " , " + str(start_y) + ")\n"
     global resourceList
     makeResourceList()
     cat_counter = 0
@@ -194,8 +227,27 @@ def completeMap():
                 pass
             #print(mapList[pt[1]][pt[0]])
         cat_counter += 1
+    fid = open('team13_map.csv', 'w')
+    fid.write(file_header)
     for i in range(len(mapList) - 1, -1, -1):
+        fid.write(str(mapList[i]))
+        fid.write("\n")
         print(mapList[i])
+    fid.close()
+
+def resourceFile():
+    global resourceDetails
+    file_header = "Team: 13\nMap: 0\nNotes: Final Demo Resource Information\n"
+    resources_header = "Resource Type, Parameter of Interest, Parameter, Resource X Coordinate, Resource Y Coordinate\n\n"
+    fid = open('team13_resources.csv','w')
+    fid.write(file_header)
+    fid.write(resources_header)
+    for category in resourceDetails:
+        for item in category:
+            fid.write(str(item))
+            fid.write(", ")
+        fid.write("\n")
+    fid.close()
 
 def addWalls(direction):
     
@@ -258,8 +310,6 @@ def moveForward():
     global pathMatrix
     global exploredPts
     
-    driveLibrary.driveDistance()
-    
     if currentDir == "N":
         currentY += 1
     elif currentDir == "E":
@@ -268,10 +318,13 @@ def moveForward():
         currentY -= 1
     elif currentDir == "W":
         currentX -= 1
-        
-    pathMatrix[currentY][currentX] = OPEN_KEY
 
+    
+    pathMatrix[currentY][currentX] = OPEN_KEY
+    
     exploredPts.append([currentX, currentY])
+
+    driveLibrary.driveDistance()
     
     print("Moved to:", currentX, currentY)
 
@@ -351,6 +404,7 @@ def scanSurroundings():
         elif clear_var == 3:
             pathMatrix[check_y][check_x] = OPEN_KEY
             unexploredPts.append([check_x, check_y])
+            unknownObjs.append([check_x, check_y])
 
         unexploredPts = removeDuplicates(unexploredPts)
         

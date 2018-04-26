@@ -37,15 +37,15 @@ BEACON_MOTOR = BP.PORT_C
 
 ################DRIVING#######################
 
-GRID_DIST = 35 #cm
-FORWARD_DRIVE_SPEED = 10 #cm per second
-TURN_CMPS = -5 #cm per second
+GRID_DIST = 40 #cm
+FORWARD_DRIVE_SPEED = 40 #cm per second
+TURN_CMPS = -10 #cm per second
 STOP_DISTANCE = 15 #cm 15
 
 ###########PHYSICAL DIMENTIONS################
 
-WHEEL_DIAMETER = 5.75 #cm
-DISTANCE_BETWEEN_TIRES = 16.5 #cm
+WHEEL_DIAMETER = 5.48 #cm
+DISTANCE_BETWEEN_TIRES = 16.1 #cm
 TURN_SPEED = float((TURN_CMPS*180)/((WHEEL_DIAMETER/2)*3.14))
 
 
@@ -54,12 +54,12 @@ TURN_SPEED = float((TURN_CMPS*180)/((WHEEL_DIAMETER/2)*3.14))
 SCAN_F_ENCODER = 0
 SCAN_R_ENCODER = 90
 SCAN_L_ENCODER = -90
-SCAN_MOVE_SPEED = 150 # dps
+SCAN_MOVE_SPEED = 200 # dps
 SCAN_TOLERANCE = 1
 
 
 ################SCANNING VARS#################
-WALL_DISTANCE = 25
+WALL_DISTANCE = 39
 OBJ_DISTANCE = 39
 
 BP.set_sensor_type(mag_sensor_port, BP.SENSOR_TYPE.CUSTOM, [(BP.SENSOR_CUSTOM.PIN1_ADC)]) # Configure for an analog on sensor port pin 1, and poll the analog line on pin 1.
@@ -143,7 +143,7 @@ def gridForward():
     rotateScanner("R")
     right_dist = grovepi.ultrasonicRead(ultrasonic_sensor_port) - 2
     rotateScanner("F")
-    grid_dist = 40
+    grid_dist = GRID_DIST
 
     
     diff = abs(right_dist-left_dist)
@@ -248,8 +248,6 @@ def rotateScanner(direction):
     SLAM.scanPos = SLAM.numToDirScanner(direction)
     SLAM.updateScanDir()
 
-    
-    
     stop()
         
 def resetMotorEncoders():
@@ -332,41 +330,15 @@ def turnLeft(degrees = 90):
     print("Arc length traveled:", arc_length_traveled)
     BP.set_motor_power(LEFT_MOTOR + RIGHT_MOTOR, 0)
 
-def pathFind():
-    state = 0
-    while True:
-        ultra = grovepi.ultrasonicRead(ultrasonic_sensor_port)
-        print(ultra)
-        if (ultra > STOP_DISTANCE):
-            driveSpeed()
-            state = 0
-        else:
-            stop()
-            time.sleep(1)
-            if (state == 0 and ultra <= STOP_DISTANCE):
-                print("Checking Right")
-                turnRight()
-                state = 1
-            elif (state == 1 and ultra <= STOP_DISTANCE):
-                print("Checking Left from Right")
-                turnLeft()
-                state = 2
-            elif (state == 2 and ultra <= STOP_DISTANCE):
-                print("Turning around")
-                turnRight()
-                #driveDistance(targetDistance = -10) #what is targetDistance?
-                turnRight(180)
-                state = 0
-
 def inspectCargo():
     arm_encoder_a = BP.get_motor_encoder(ARM_MOTOR)
     power = 7
     BP.set_motor_power(ARM_MOTOR, power)
     time.sleep(.1)
-    while(abs(BP.get_motor_encoder(ARM_MOTOR) - arm_encoder_a) > 1 or power < 20):
+    while(abs(BP.get_motor_encoder(ARM_MOTOR) - arm_encoder_a) > 1 or power < 60):
         power += 1
         BP.set_motor_power(ARM_MOTOR, power)
-        time.sleep(.3)
+        time.sleep(.1)
         arm_encoder_a = BP.get_motor_encoder(ARM_MOTOR)
     BP.set_motor_power(ARM_MOTOR, 0)
     print("Power level:", power)
@@ -381,9 +353,23 @@ def gridCargo():
     ultra = 40
     target = 30
     target_dist = -15
-    BP.set_motor_dps(RIGHT_MOTOR + LEFT_MOTOR, 75)
+    BP.set_motor_dps(RIGHT_MOTOR + LEFT_MOTOR, 150)
     while abs(ultra - target) > 2:
         ultra = grovepi.ultrasonicRead(ultrasonic_sensor_port)
+        ir = IR_Functions.IR_Read(grovepi)
+        mag = mpu9250.readMagnet()
+        if(ir > 280):
+            print("IR BEACON FOUND")
+            SLAM.resourceDetails.append(["Cesium-137", "Radiation Strength(W)", ir, currentX, currentY])
+            ultra = target
+            BP.set_motor_dps(RIGHT_MOTOR + LEFT_MOTOR, 0)
+            return
+        elif(mag > 210):
+            print("MRI FOUND")
+            SLAM.resourceDetails. append(["MRI", "Field Strength(uT)", mag, currentX, currentY])            
+            ultra = target
+            BP.set_motor_dps(RIGHT_MOTOR + LEFT_MOTOR, 0)
+            return
         print(ultra - target)
     BP.set_motor_dps(RIGHT_MOTOR + LEFT_MOTOR, 0)
     turnRight(degrees = 180)
