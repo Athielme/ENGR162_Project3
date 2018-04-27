@@ -1,13 +1,29 @@
 import sys
 import driveLibrary
-import time
 from pathfinding.core.diagonal_movement import DiagonalMovement
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder
 
+# Character keys for dispMap()
 CLEAR_CHAR = 'X'
 WALL_CHAR = ' '
 
+# Robot starting point and orientations
+start_x = 7
+start_y = 0
+currentX = start_x
+currentY = start_y
+currentDir = "N"
+scanDir = "N"
+scanPos = "F"
+
+# Point lists
+unexploredPts = [[start_x, start_y + 1]]
+exploredPts = [[start_x, start_y]]
+
+# Resource information
+
+# map keys for resources and paths
 OPEN_KEY = 1
 WALL_KEY = 0
 ORIGIN_KEY = 10
@@ -18,6 +34,7 @@ MRI_KEY = 5
 OS_KEY = 6
 EXT_KEY = 7
 
+# compile full list
 resourceKeys = [
             OPEN_KEY,
             ORIGIN_KEY,
@@ -28,17 +45,6 @@ resourceKeys = [
             OS_KEY,
             EXT_KEY
             ]
-
-start_x = 7
-start_y = 0
-currentX = start_x
-currentY = start_y
-currentDir = "N"
-scanDir = "N"
-scanPos = "F"
-
-unexploredPts = [[start_x, start_y + 1]]
-exploredPts = [[start_x, start_y]]
 
 pathMatrix = [[OPEN_KEY]] # Matrix that stores availble paths for mvmt
 origin_coords = [[start_x, start_y]]
@@ -51,14 +57,13 @@ os_coords = []
 resourceList = []
 mapList = []
 unknownObjs = []
-
 resourceDetails = []
 
-
+# Map overall dimentions 
 map_max_x = 10
 map_max_y = 10
 
-def findPath(start, end):
+def findPath(start, end): # Function that queries the pathfinding library for path
     global pathMatrix
 
     grid = Grid(matrix = pathMatrix)
@@ -75,24 +80,27 @@ def findPath(start, end):
     
     return path
 
-def pathToClosestPt():
+def pathToClosestPt(): # determine path to closest point
     global currentX
     global currentY
     global unexploredPts
-    min_length = 100
-    path = []
-    for pt in unexploredPts:
+    min_length = 100 # dummy starting value
+    path = [] # empty list to store path
+    
+    for pt in unexploredPts: # calculate distance to each unexplored point
         length = len(findPath([currentX, currentY], pt))
         if length > 1 and length < min_length:
+            # set optimal path to closest point
             path = findPath([currentX, currentY], pt)
+            
     return path
 
-def drivePath(path):
+def drivePath(path): # drive to all the points in given path
     for pt in path:
         goTo(pt)
 
 
-def goTo(pt):
+def goTo(pt): # Drive to specified point
     global exploredPts
     global unexplredPts
     
@@ -118,7 +126,7 @@ def goTo(pt):
 
     
 
-def makeResourceList():
+def makeResourceList(): # compile list of resources
     global resourceList
     
     resourceList = [
@@ -138,11 +146,11 @@ def makeResourceList():
                 exploredPts.append(item)
     return
 
-def advance():
+def advance(): # Advance a grid point
     moveForward()
     scanSurroundings()
 
-def turnTowards(direction):
+def turnTowards(direction): # Turn the LARIS in given direction
     print("Turning ", direction)
     current = dirToNum(currentDir)
     target = dirToNum(direction)
@@ -161,13 +169,13 @@ def turnTowards(direction):
     elif(target - current == -3):
         turnRight()
         
-def flipMatrix(matrix):
+def flipMatrix(matrix): # reverse y values of a matrix
     newMatrix = []
     for i in range(len(matrix) -1, -1, -1):
         newMatrix.append(matrix[i])
     return newMatrix
 
-def dispMap():
+def dispMap(): # print basic map without resources, useful for debug
     global pathMatrix
     
     for row in pathMatrix:
@@ -185,48 +193,23 @@ def dispMap():
 #            sys.stdout.write('--') # Horizontal lines
         print() # Newline for next row of map
 
-##def completeMap():
-##    mapList = [[]]
-##    makeResourceList()
-##    x_counter = 0
-##    y_counter = 0
-##    cat_counter = 0
-##    for row in pathMatrix:
-##        mapList.append([])
-##        for item in row:
-##            for pt in exploredPts: # Check all explored points
-##                resource = 0 # Default no resource at pt
-##                if x_counter == pt[0] and y_counter == pt[1]: # If current x 
-##                    cat_counter = 0
-##                    for category in resourceList:
-##                        for coord in category:
-##                            print(coord)
-##                            if resource == 0 and x_counter == coord[0] and y_counter == coord[1]:
-##                                mapList[y_counter].append(resourceKeys[cat_counter])
-##                                print("found")
-##                                resource = 1
-##                    cat_counter += 1
-##                    if resource == 0:
-##                        mapList[y_counter].append(OPEN_KEY)
-##                else:
-##                    mapList[y_counter].append(WALL_KEY)
-##            x_counter += 1
-##        y_counter += 1
-##    print(mapList)
-
-def completeMap():
-    file_header = "Team: 13\nMap: 4\nUnit Length: 40\nUnit: cm\nOrigin: (" + str(start_x) + " , " + str(start_y) + ")\n"
+def completeMap(): # compile map
     global resourceList
+    file_header = "Team: 13\nMap: 4\nUnit Length: 40\nUnit: cm\nOrigin: (" + str(start_x) + " , " + str(start_y) + ")\n"
+    
+    # compile resource list
     makeResourceList()
-    cat_counter = 0
+    
+    cat_counter = 0 # counter for categories
     for category in resourceList:
         for pt in category:
             try:
-                mapList[pt[1]][pt[0]] = resourceKeys[cat_counter]
+                mapList[pt[1]][pt[0]] = resourceKeys[cat_counter] # put category at correct pt
             except:
                 pass
-            #print(mapList[pt[1]][pt[0]])
-        cat_counter += 1
+        cat_counter += 1 # increase cat counter
+    
+    # write to file
     fid = open('team13_map.csv', 'w')
     fid.write(file_header)
     for i in range(len(mapList) - 1, -1, -1):
@@ -235,7 +218,7 @@ def completeMap():
         print(mapList[i])
     fid.close()
 
-def resourceFile():
+def resourceFile(): # write resource information to resource file
     global resourceDetails
     file_header = "Team: 13\nMap: 0\nNotes: Final Demo Resource Information\n"
     resources_header = "Resource Type, Parameter of Interest, Parameter, Resource X Coordinate, Resource Y Coordinate\n\n"
@@ -273,7 +256,7 @@ def addWalls(direction):
         for row in pathMatrix:
             row.insert(0,FILL_NUM) # Add filler at start of every row 
 
-def emptyMap(x,y):
+def emptyMap(x,y): # Create an empty map 
     global pathMatrix
     global mapList
     
@@ -285,7 +268,7 @@ def emptyMap(x,y):
     
     completeMap()
 
-def checkEdges():
+def checkEdges(): # check if LARIS has reached edge of map
     global currentX
     global currentY
     if currentX == 0:
@@ -303,7 +286,7 @@ def checkEdges():
         print("On North edge")
         addWalls("N")
     
-def moveForward():
+def moveForward(): # move SLAM position forward one point
     global currentX
     global currentY
     global currentDir
@@ -319,16 +302,18 @@ def moveForward():
     elif currentDir == "W":
         currentX -= 1
 
-    
+    # Update pathMatrix
     pathMatrix[currentY][currentX] = OPEN_KEY
     
+    # Update explored pts
     exploredPts.append([currentX, currentY])
-
+    
+    # call driveLibrary
     driveLibrary.driveDistance()
     
     print("Moved to:", currentX, currentY)
 
-def updateScanDir():
+def updateScanDir(): # update scanner direction
     global currentDir
     global scanDir
     global scanPos
@@ -337,7 +322,7 @@ def updateScanDir():
     
     return scanDir
     
-def turnRight():
+def turnRight(): # turn SLAM orientation to right
     global currentDir
     global scanDir
 
@@ -347,7 +332,7 @@ def turnRight():
     scanDir = currentDir
     print("Current Direction is:", currentDir)
     
-def turnLeft():
+def turnLeft(): # Turn SLAM orientation to left
     global currentDir
     global scanDir
     
@@ -357,7 +342,7 @@ def turnLeft():
     scanDir = currentDir
     print("Current Direction is:", currentDir)
     
-def scanSurroundings():
+def scanSurroundings(): # Scan surrounding and add data to lists
     global scanDir
     global scanPos
     global unexploredPts
@@ -390,35 +375,36 @@ def scanSurroundings():
 
         clear_var = driveLibrary.isClear()
         
-        if clear_var == 1:
+        if clear_var == 1: # if clear
             pathMatrix[check_y][check_x] = OPEN_KEY
             unexploredPts.append([check_x, check_y])
             
-        elif clear_var == 2:
+        elif clear_var == 2: # if wall 
             pathMatrix[check_y][check_x] = WALL_KEY
             try:
                 unexploredPts.remove([check_x, check_y])
             except:
                 pass
 
-        elif clear_var == 3:
+        elif clear_var == 3: # if object
             pathMatrix[check_y][check_x] = OPEN_KEY
             unexploredPts.append([check_x, check_y])
             unknownObjs.append([check_x, check_y])
-
-        unexploredPts = removeDuplicates(unexploredPts)
         
+        # check for duplicates
+        unexploredPts = removeDuplicates(unexploredPts)
+    
+    # compile map and output
     completeMap()
         
-        
-def removeDuplicates(starting_list):
+def removeDuplicates(starting_list): # remove duplicates from a list
     final_list = []
     for i in starting_list:
         if i not in final_list:
             final_list.append(i)
     return final_list
 
-def dirToNum(direction):
+def dirToNum(direction): # convert direction to number
     
     if direction == "N" or direction == "F":
         return 0
@@ -429,7 +415,7 @@ def dirToNum(direction):
     elif direction == "W" or direction == "L":
         return 3
 
-def numToDirScanner(number):
+def numToDirScanner(number): # convert number to scanner direction
     while number < 0:
         number += 4
         
@@ -444,7 +430,7 @@ def numToDirScanner(number):
     elif number == 3:
         return "L"
     
-def numToDir(number):
+def numToDir(number): # convert num to cardinal direction
     while number < 0:
         number += 4
         
